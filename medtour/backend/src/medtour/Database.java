@@ -11,7 +11,7 @@ import java.sql.SQLException;
 public class Database {
 
     private static final String URL      = System.getenv().getOrDefault("MEDTOUR_DB_URL",
-            "mysql://root:ZfbhaCBYaajHvVoOHLQkOzqVNGSzqIgU@mysql.railway.internal:3306/railway");
+            "jdbc:mysql://mysql.railway.internal:3306/medtour?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
     private static final String USER     = System.getenv().getOrDefault("MEDTOUR_DB_USER", "root");
     private static final String PASSWORD = System.getenv().getOrDefault("MEDTOUR_DB_PASSWORD", "ZfbhaCBYaajHvVoOHLQkOzqVNGSzqIgU"); // <-- change to your MySQL password
 
