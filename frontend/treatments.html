@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treatments — MedTour India</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="providers.html">Hospitals</a></li>
+      <li><a href="treatments.html" class="active">Treatments</a></li>
+      <li><a href="appointment.html">Book Consultation</a></li>
+      <li><a href="check-status.html">Check Status</a></li>
+      <li><a href="admin.html">Admin</a></li>
+      <li><a href="login.html" id="nav-auth-link">Login</a></li>
+    </ul>
+    <a href="appointment.html" class="nav-cta">Get Started</a>
+    <label for="nav-toggle" class="nav-toggle" aria-label="Toggle menu"><span></span></label>
+  </nav>
+</header>
+
+<section class="section container">
+  <div class="section-head">
+    <div>
+      <h2>Treatments &amp; Services</h2>
+      <p>Compare procedures, estimated cost ranges and recovery duration.</p>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <input type="text" id="search-input" placeholder="Search treatment name…">
+    <select id="category-select">
+      <option value="">All Categories</option>
+      <option value="Cardiac">Cardiac</option>
+      <option value="Orthopedic">Orthopedic</option>
+      <option value="Cosmetic">Cosmetic</option>
+      <option value="Dental">Dental</option>
+      <option value="Hair">Hair Restoration</option>
+      <option value="Fertility">Fertility</option>
+    </select>
+    <button class="btn btn-primary" id="filter-btn" style="padding:11px 22px;">Search</button>
+  </div>
+
+  <div id="treatment-grid" class="grid grid-3">
+    <p class="empty-state"><span class="spinner"></span>Loading treatments…</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-feedback container">
+    <h3>Share Your Feedback</h3>
+    <p>Tell us about your experience with MedTour India — it helps us improve for future patients.</p>
+    <div class="alert alert-success" id="feedback-success"></div>
+    <div class="alert alert-error" id="feedback-error"></div>
+    <form id="feedback-form" novalidate>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="feedback-name">Name *</label>
+          <input type="text" id="feedback-name" required>
+          <div class="field-error">Please enter your name.</div>
+        </div>
+        <div class="form-group">
+          <label for="feedback-email">Email *</label>
+          <input type="email" id="feedback-email" required>
+          <div class="field-error">Please enter a valid email address.</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Your Rating *</label>
+        <div class="star-rating" role="radiogroup" aria-label="Rating out of 5 stars">
+          <input type="radio" id="fb-star5" name="feedback-rating" value="5"><label for="fb-star5" title="5 stars">★</label>
+          <input type="radio" id="fb-star4" name="feedback-rating" value="4"><label for="fb-star4" title="4 stars">★</label>
+          <input type="radio" id="fb-star3" name="feedback-rating" value="3"><label for="fb-star3" title="3 stars">★</label>
+          <input type="radio" id="fb-star2" name="feedback-rating" value="2"><label for="fb-star2" title="2 stars">★</label>
+          <input type="radio" id="fb-star1" name="feedback-rating" value="1"><label for="fb-star1" title="1 star">★</label>
+        </div>
+        <div class="field-error" id="feedback-rating-error">Please select a rating.</div>
+      </div>
+      <div class="form-group">
+        <label for="feedback-comment">Your Feedback *</label>
+        <textarea id="feedback-comment" rows="3" maxlength="2000" required placeholder="What went well? What could be better?"></textarea>
+        <div class="field-error">Please share a few words of feedback.</div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="feedback-submit-btn">Submit Feedback</button>
+    </form>
+  </div>
+
+  <div class="footer-inner">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+  </div>
+  <p class="footer-note">Built for Smart India Hackathon 2026 — Healthcare / Travel &amp; Tourism theme.</p>
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/feedback-widget.js"></script>
+<script>
+  const grid = document.getElementById("treatment-grid");
+  const searchInput = document.getElementById("search-input");
+  const categorySelect = document.getElementById("category-select");
+
+  function treatmentCard(t) {
+    return `
+      <div class="card">
+        <div class="card-body">
+          <span class="badge">${escapeHtml(t.category)}</span>
+          <h3 style="margin-top:10px;">${escapeHtml(t.name)}</h3>
+          <p class="card-meta">${escapeHtml(t.hospitalName)} · ${escapeHtml(t.city)} · ${t.durationDays} day(s)</p>
+          <p class="card-desc">${escapeHtml(t.description || "")}</p>
+          <div class="card-foot">
+            <span class="price">${formatInr(t.costMin)}–${formatInr(t.costMax)} <small>est.</small></span>
+            <a href="appointment.html?treatmentId=${t.id}&hospitalId=${t.hospitalId}" class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem;">Request Appointment</a>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function loadTreatments() {
+    grid.innerHTML = `<p class="empty-state"><span class="spinner"></span>Loading treatments…</p>`;
+    try {
+      const params = new URLSearchParams();
+      const hospitalId = getUrlParam("hospitalId");
+      if (searchInput.value.trim()) params.set("q", searchInput.value.trim());
+      if (categorySelect.value) params.set("category", categorySelect.value);
+      const treatments = await apiGet(`/treatments?${params.toString()}`);
+      const filtered = hospitalId ? treatments.filter(t => String(t.hospitalId) === String(hospitalId)) : treatments;
+      grid.innerHTML = filtered.length
+        ? filtered.map(treatmentCard).join("")
+        : `<p class="empty-state">No treatments match your search.</p>`;
+    } catch (err) {
+      grid.innerHTML = `<p class="empty-state">Could not load treatments. Is the backend server running? (${escapeHtml(err.message)})</p>`;
+    }
+  }
+
+  document.getElementById("filter-btn").addEventListener("click", loadTreatments);
+  searchInput.addEventListener("keydown", e => { if (e.key === "Enter") loadTreatments(); });
+
+  loadTreatments();
+</script>
+</body>
+</html>

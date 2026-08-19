@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — MedTour India</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="providers.html">Hospitals</a></li>
+      <li><a href="treatments.html">Treatments</a></li>
+      <li><a href="appointment.html">Book Consultation</a></li>
+      <li><a href="check-status.html">Check Status</a></li>
+      <li><a href="admin.html" class="active">Admin</a></li>
+      <li><a href="login.html" id="nav-auth-link">Login</a></li>
+    </ul>
+    <a href="appointment.html" class="nav-cta">Get Started</a>
+    <label for="nav-toggle" class="nav-toggle" aria-label="Toggle menu"><span></span></label>
+  </nav>
+</header>
+
+<section class="section container">
+  <div class="section-head">
+    <div>
+      <h2>Admin Dashboard</h2>
+      <p>Every consultation request submitted through the platform, in one place.</p>
+    </div>
+    <button class="btn btn-outline" id="refresh-btn">Refresh ↻</button>
+  </div>
+
+  <div class="grid grid-3" style="margin-bottom:28px;">
+    <div class="card"><div class="card-body"><span class="card-meta">Total Requests</span><h3 id="stat-total" style="font-size:2rem;">—</h3></div></div>
+    <div class="card"><div class="card-body"><span class="card-meta">Pending</span><h3 id="stat-pending" style="font-size:2rem;">—</h3></div></div>
+    <div class="card"><div class="card-body"><span class="card-meta">Confirmed</span><h3 id="stat-confirmed" style="font-size:2rem;">—</h3></div></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Patient</th><th>Contact</th><th>Treatment</th><th>Hospital</th>
+          <th>Preferred Date</th><th>Est. ₹</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="8"><span class="spinner"></span>Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+  </div>
+  <p class="footer-note">Built for Smart India Hackathon 2026 — Healthcare / Travel &amp; Tourism theme.</p>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  // Guard: this dashboard now requires a real ROLE_ADMIN JWT — the old backend had no auth at all.
+  if (!hasRole("ADMIN")) {
+    window.location.href = "login.html?redirect=admin.html";
+  }
+
+  const tbody = document.getElementById("table-body");
+
+  async function loadAppointments() {
+    tbody.innerHTML = `<tr><td colspan="9"><span class="spinner"></span>Loading…</td></tr>`;
+    try {
+      const rows = await apiGet("/appointments");
+      document.getElementById("stat-total").textContent = rows.length;
+      document.getElementById("stat-pending").textContent = rows.filter(r => r.status === "Pending").length;
+      document.getElementById("stat-confirmed").textContent = rows.filter(r => r.status === "Confirmed").length;
+
+      tbody.innerHTML = rows.length ? rows.map(r => `
+        <tr>
+          <td>#${r.id}</td>
+          <td>${escapeHtml(r.patientName)}<br><span class="card-meta">${escapeHtml(r.country || "")}</span></td>
+          <td>${escapeHtml(r.email)}<br><span class="card-meta">${escapeHtml(r.phone)}</span></td>
+          <td>${escapeHtml(r.treatmentName || "—")}</td>
+          <td>${escapeHtml(r.hospitalName || "—")}</td>
+          <td>${escapeHtml(r.preferredDate)}</td>
+          <td>${formatInr(r.estimatedTotalInr || 0)}</td>
+          <td><span class="status-pill status-${r.status}">${escapeHtml(r.status)}</span></td>
+          <td>
+            <select data-id="${r.id}" class="status-select">
+              <option value="Pending" ${r.status==='Pending'?'selected':''}>Pending</option>
+              <option value="Confirmed" ${r.status==='Confirmed'?'selected':''}>Confirmed</option>
+              <option value="Rejected" ${r.status==='Rejected'?'selected':''}>Rejected</option>
+              <option value="Completed" ${r.status==='Completed'?'selected':''}>Completed</option>
+            </select>
+          </td>
+        </tr>
+      `).join("") : `<tr><td colspan="9">No appointment requests yet.</td></tr>`;
+
+      document.querySelectorAll(".status-select").forEach(sel => {
+        sel.addEventListener("change", async () => {
+          const id = sel.getAttribute("data-id");
+          try {
+            await apiPut(`/appointments/${id}`, { status: sel.value });
+            showToast(`Appointment #${id} updated to ${sel.value}.`, "success");
+            loadAppointments();
+          } catch (err) {
+            showToast("Could not update status: " + err.message, "error");
+          }
+        });
+      });
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) {
+        window.location.href = "login.html?redirect=admin.html";
+        return;
+      }
+      tbody.innerHTML = `<tr><td colspan="9">Could not load appointments. Is the backend server running? (${escapeHtml(err.message)})</td></tr>`;
+    }
+  }
+
+  document.getElementById("refresh-btn").addEventListener("click", loadAppointments);
+  loadAppointments();
+</script>
+</body>
+</html>

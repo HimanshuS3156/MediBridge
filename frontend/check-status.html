@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Check Appointment Status — MedTour India</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="providers.html">Hospitals</a></li>
+      <li><a href="treatments.html">Treatments</a></li>
+      <li><a href="appointment.html">Book Consultation</a></li>
+      <li><a href="check-status.html" class="active">Check Status</a></li>
+      <li><a href="login.html" id="nav-auth-link">Login</a></li>
+    </ul>
+    <a href="appointment.html" class="nav-cta">Get Started</a>
+    <label for="nav-toggle" class="nav-toggle" aria-label="Toggle menu"><span></span></label>
+  </nav>
+</header>
+
+<section class="section container" style="max-width:640px;">
+  <div class="section-head">
+    <div>
+      <h2>Check Your Appointment Status</h2>
+      <p>Enter the reference ID and email address from your confirmation email to see where things stand.</p>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <div class="alert alert-error" id="lookup-error"></div>
+
+    <form id="lookup-form" novalidate>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="referenceId">Reference ID *</label>
+          <input type="number" id="referenceId" min="1" required placeholder="e.g. 42">
+          <div class="field-error">Please enter your appointment reference ID.</div>
+        </div>
+        <div class="form-group">
+          <label for="lookupEmail">Email Address *</label>
+          <input type="email" id="lookupEmail" required placeholder="The email you booked with">
+          <div class="field-error">Please enter the email address you booked with.</div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="lookup-btn">Check Status</button>
+      <p class="form-note">Both fields must match exactly what you submitted when booking — this keeps your appointment details private to you.</p>
+    </form>
+  </div>
+
+  <div id="result-card" style="display:none;"></div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+  </div>
+  <p class="footer-note">Built for Smart India Hackathon 2026 — Healthcare / Travel &amp; Tourism theme.</p>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  const form = document.getElementById("lookup-form");
+  const errorAlert = document.getElementById("lookup-error");
+  const referenceIdInput = document.getElementById("referenceId");
+  const lookupEmailInput = document.getElementById("lookupEmail");
+  const resultCard = document.getElementById("result-card");
+  const lookupBtn = document.getElementById("lookup-btn");
+
+  let currentAppointment = null;
+
+  const STATUS_MESSAGES = {
+    Pending:   "Your request is being reviewed by our care team. We'll email you the moment it's confirmed — no action needed from you right now.",
+    Confirmed: "Your appointment is confirmed. Please bring a valid ID and any relevant medical records or reports on the day.",
+    Rejected:  "We're unable to accommodate this specific request. Please get in touch, or submit a new request for a different date, hospital, or doctor.",
+    Completed: "Thank you for choosing MedTour India — we hope your visit went well. We'd love to hear how it went."
+  };
+
+  function renderResult(appt) {
+    currentAppointment = appt;
+    const message = STATUS_MESSAGES[appt.status] || "";
+
+    resultCard.innerHTML = `
+      <div class="form-card">
+        <div class="estimate-head" style="margin-bottom:14px;">
+          <span>Appointment #${appt.id}</span>
+          <span class="status-pill status-${appt.status}">${escapeHtml(appt.status)}</span>
+        </div>
+        <p style="margin:0 0 18px;color:var(--color-text-muted);">${escapeHtml(message)}</p>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><th style="width:40%;">Patient</th><td>${escapeHtml(appt.patientName)}</td></tr>
+              <tr><th>Doctor</th><td>${appt.doctorName ? escapeHtml(formatDoctorName(appt.doctorName)) : "No preference specified"}</td></tr>
+              <tr><th>Treatment</th><td>${escapeHtml(appt.treatmentName || "—")}</td></tr>
+              <tr><th>Hospital</th><td>${escapeHtml(appt.hospitalName || "—")}</td></tr>
+              <tr><th>Preferred Date</th><td>${escapeHtml(appt.preferredDate)}</td></tr>
+              <tr><th>Estimated Cost</th><td>${formatInr(appt.estimatedTotalInr || 0)}</td></tr>
+              <tr><th>Submitted</th><td>${new Date(appt.createdAt).toLocaleString()}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        ${appt.status === "Completed" ? feedbackPromptHtml() : ""}
+      </div>
+    `;
+    resultCard.style.display = "block";
+
+    if (appt.status === "Completed") wireFeedbackForm();
+  }
+
+  function feedbackPromptHtml() {
+    return `
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--color-border);">
+        <h3 style="font-size:1.05rem;">How was your consultation?</h3>
+        <div class="alert alert-success" id="consult-feedback-success"></div>
+        <div class="alert alert-error" id="consult-feedback-error"></div>
+        <div class="star-rating" role="radiogroup" aria-label="Rating out of 5 stars" id="consult-star-rating">
+          <input type="radio" id="consult-star5" name="consult-rating" value="5"><label for="consult-star5" title="5 stars">★</label>
+          <input type="radio" id="consult-star4" name="consult-rating" value="4"><label for="consult-star4" title="4 stars">★</label>
+          <input type="radio" id="consult-star3" name="consult-rating" value="3"><label for="consult-star3" title="3 stars">★</label>
+          <input type="radio" id="consult-star2" name="consult-rating" value="2"><label for="consult-star2" title="2 stars">★</label>
+          <input type="radio" id="consult-star1" name="consult-rating" value="1"><label for="consult-star1" title="1 star">★</label>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+          <textarea id="consult-comment" rows="3" maxlength="2000" placeholder="What went well? What could be better?"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" id="consult-feedback-btn" type="button">Submit Feedback</button>
+      </div>
+    `;
+  }
+
+  function wireFeedbackForm() {
+    document.getElementById("consult-feedback-btn").addEventListener("click", async () => {
+      const successAlert = document.getElementById("consult-feedback-success");
+      const errAlert = document.getElementById("consult-feedback-error");
+      successAlert.style.display = "none";
+      errAlert.style.display = "none";
+
+      const rating = document.querySelector('input[name="consult-rating"]:checked')?.value;
+      const comment = document.getElementById("consult-comment").value.trim();
+      if (!rating || !comment) {
+        errAlert.style.display = "block";
+        errAlert.textContent = "Please select a rating and share a few words first.";
+        return;
+      }
+
+      const btn = document.getElementById("consult-feedback-btn");
+      btn.disabled = true;
+      try {
+        await apiPost("/feedback", {
+          name: currentAppointment.patientName,
+          email: currentAppointment.email,
+          rating: Number(rating),
+          comment,
+          appointmentId: currentAppointment.id
+        });
+        successAlert.style.display = "block";
+        successAlert.textContent = "Thank you! Your feedback helps us improve the healthcare experience.";
+        document.getElementById("consult-feedback-btn").style.display = "none";
+      } catch (err) {
+        errAlert.style.display = "block";
+        errAlert.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  async function doLookup() {
+    errorAlert.style.display = "none";
+    resultCard.style.display = "none";
+
+    let ok = true;
+    if (!referenceIdInput.value) { setFieldError(referenceIdInput, "Please enter your appointment reference ID."); ok = false; }
+    else clearFieldError(referenceIdInput);
+    if (!isValidEmailFormat(lookupEmailInput.value)) { setFieldError(lookupEmailInput, "Please enter the email address you booked with."); ok = false; }
+    else clearFieldError(lookupEmailInput);
+    if (!ok) return;
+
+    lookupBtn.disabled = true;
+    lookupBtn.innerHTML = `<span class="spinner"></span>Checking…`;
+
+    try {
+      const appt = await apiGet(`/appointments/lookup?referenceId=${encodeURIComponent(referenceIdInput.value)}&email=${encodeURIComponent(lookupEmailInput.value.trim())}`);
+      renderResult(appt);
+    } catch (err) {
+      errorAlert.style.display = "block";
+      errorAlert.textContent = err.message;
+    } finally {
+      lookupBtn.disabled = false;
+      lookupBtn.textContent = "Check Status";
+    }
+  }
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); doLookup(); });
+
+  // Arriving from the emailed confirmation link (?referenceId=42&email=jane@example.com) —
+  // pre-fill and look up automatically so the "check status" step is truly one click from the email.
+  const preId = getUrlParam("referenceId");
+  const preEmail = getUrlParam("email");
+  if (preId) referenceIdInput.value = preId;
+  if (preEmail) lookupEmailInput.value = preEmail;
+  if (preId && preEmail) doLookup();
+</script>
+</body>
+</html>
