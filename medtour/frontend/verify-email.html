@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify Your Email — MedTour India</title>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox">
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="providers.html">Hospitals</a></li>
+      <li><a href="treatments.html">Treatments</a></li>
+      <li><a href="appointment.html">Book Consultation</a></li>
+      <li><a href="check-status.html">Check Status</a></li>
+      <li><a href="login.html" id="nav-auth-link">Login</a></li>
+    </ul>
+    <a href="appointment.html" class="nav-cta">Get Started</a>
+    <label for="nav-toggle" class="nav-toggle" aria-label="Toggle menu"><span></span></label>
+  </nav>
+</header>
+
+<section class="section container" style="max-width:520px;text-align:center;">
+  <div class="form-card">
+    <div id="verify-loading">
+      <span class="spinner"></span>
+      <p style="display:inline;color:var(--color-text-muted);">Verifying your email address…</p>
+    </div>
+    <div class="alert alert-success" id="verify-success" style="display:none;"></div>
+    <div class="alert alert-error" id="verify-error" style="display:none;"></div>
+    <a href="index.html" class="btn btn-primary" id="verify-continue-btn" style="display:none;">Continue to MedTour India</a>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <a href="index.html" class="logo">Med<span>Tour</span> India</a>
+  </div>
+  <p class="footer-note">Built for Smart India Hackathon 2026 — Healthcare / Travel &amp; Tourism theme.</p>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  const loading = document.getElementById("verify-loading");
+  const successAlert = document.getElementById("verify-success");
+  const errorAlert = document.getElementById("verify-error");
+  const continueBtn = document.getElementById("verify-continue-btn");
+
+  async function verify() {
+    const token = getUrlParam("token");
+    loading.style.display = "none";
+
+    if (!token) {
+      errorAlert.style.display = "block";
+      errorAlert.textContent = "This verification link is missing its token — please use the link from your email exactly as sent.";
+      continueBtn.style.display = "inline-block";
+      return;
+    }
+
+    try {
+      const result = await apiGet(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+      successAlert.style.display = "block";
+      successAlert.textContent = result.message || "Your email address has been verified.";
+    } catch (err) {
+      errorAlert.style.display = "block";
+      errorAlert.textContent = err.message;
+    } finally {
+      continueBtn.style.display = "inline-block";
+    }
+  }
+
+  verify();
+</script>
+</body>
+</html>
