@@ -60,8 +60,9 @@ public class HospitalHandler implements HttpHandler {
                     out.add(toMap(rs));
                 }
             }
-        } catch (Exception e) {
-            throw new ApiException(500, "Something went wrong on our end. Please try again.");
+        } catch (Exception e) { 
+            System.err.println("HospitalHandler.search() failed: " + e); 
+            e.printStackTrace(); throw new ApiException(500, "Something went wrong on our end. Please try again."); 
         }
         return out;
     }
