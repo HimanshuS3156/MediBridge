@@ -69,9 +69,9 @@ public class TreatmentHandler implements HttpHandler {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) out.add(toMap(rs));
             }
-        } catch (Exception e) {
-            throw new ApiException(500, "Something went wrong on our end. Please try again.");
-        }
+        } catch (Exception e) { 
+            System.err.println("TreatmentHandler failed: " + e); e.printStackTrace(); 
+            throw new ApiException(500, "Something went wrong on our end. Please try again."); }
         return out;
     }
 
@@ -85,9 +85,7 @@ public class TreatmentHandler implements HttpHandler {
             }
         } catch (ApiException e) {
             throw e;
-        } catch (Exception e) {
-            throw new ApiException(500, "Something went wrong on our end. Please try again.");
-        }
+        } catch (Exception e) { System.err.println("TreatmentHandler failed: " + e); e.printStackTrace(); throw new ApiException(500, "Something went wrong on our end. Please try again."); }
     }
 
     static Map<String, Object> toMap(ResultSet rs) throws Exception {
