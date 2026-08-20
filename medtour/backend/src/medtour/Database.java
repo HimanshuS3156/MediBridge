@@ -11,9 +11,9 @@ import java.sql.SQLException;
 public class Database {
 
     private static final String URL      = System.getenv().getOrDefault("MEDTOUR_DB_URL",
-            "jdbc:mysql://mysql.railway.internal:3306/medtour?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
-    private static final String USER     = System.getenv().getOrDefault("MEDTOUR_DB_USER", "root");
-    private static final String PASSWORD = System.getenv().getOrDefault("MEDTOUR_DB_PASSWORD", "ZfbhaCBYaajHvVoOHLQkOzqVNGSzqIgU"); // <-- change to your MySQL password
+            " jdbc:mysql://btxvagdo6gi2no0xk2gt-mysql.services.clever-cloud.com:3306/btxvagdo6gi2no0xk2gt?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true");
+    private static final String USER     = System.getenv().getOrDefault("MEDTOUR_DB_USER", "ugvha538e1ur62u0 ");
+    private static final String PASSWORD = System.getenv().getOrDefault("MEDTOUR_DB_PASSWORD", "Eg13KYO1D2YHFbINkSGs"); // <-- change to your MySQL password
 
     public static Connection getConnection() throws SQLException {
         try {
